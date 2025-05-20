@@ -2,7 +2,9 @@ version: "3.9"
 
 services:
   telegram_alert_bot:
-    build: .
+    build:
+      context: .
+      network: host
     environment:
       TELEGRAM_BOT_TOKEN: "7632013609:AAFdZpLw4ujGcuYJfY0Z3TGy_jiwI_dI8D4"
       TELEGRAM_GROUP_CHAT_ID: "-1002336176040"
