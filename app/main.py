@@ -40,10 +40,31 @@ async def receive_alert(request: Request):
 
     for alert in alerts:
         try:
-            status = alert.get("status").lower()
-            alert_name = alert["labels"].get("alertname", "No name")
-            name = alert["labels"].get("name", "No name")
-            summary = alert["annotations"].get("summary", "No summary")
+            status = alert.get("status")
+            if status is None:
+                logger.error(f"Missing alert status: {alert}")
+                raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Missing alert status")
+            status = status.lower()
+            if status not in ("firing", "resolved"):
+                logger.error(f"Invalid alert status: {status}")
+                raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid alert status")
+
+            labels = alert.get("labels", {})
+            alert_name = labels.get("alertname")
+            if alert_name is None:
+                logger.error(f"Missing alert name: {alert}")
+                raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Missing alert name")
+
+            name = labels.get("name")
+            if name is None:
+                logger.error(f"Missing name: {alert}")
+                raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Missing name")
+
+            annotations = alert.get("annotations", {})
+            summary = annotations.get("summary", "No summary")
+            if summary is None:
+                logger.error(f"Missing summary annotations: {alert}")
+                raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Missing summary annotations")
 
             emoji = "🔴" if status == "firing" else "🟢"
             base_msg = f"{emoji} *{alert_name}* is *{status.upper()}*\n_{summary}_\n*{name}*"
