@@ -42,29 +42,21 @@ async def receive_alert(request: Request):
         try:
             status = alert.get("status")
             if status is None:
-                logger.error(f"Missing alert status: {alert}")
-                raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Missing alert status")
+                raise ValueError("Missing or invalid status")
             status = status.lower()
             if status not in ("firing", "resolved"):
-                logger.error(f"Invalid alert status: {status}")
-                raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Invalid alert status")
+                raise ValueError("Invalid status value")
 
             labels = alert.get("labels", {})
             alert_name = labels.get("alertname")
-            if alert_name is None:
-                logger.error(f"Missing alert name: {alert}")
-                raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Missing alert name")
-
             name = labels.get("name")
-            if name is None:
-                logger.error(f"Missing name: {alert}")
-                raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Missing name")
+            if not alert_name or not name:
+                raise ValueError("Missing required label fields")
 
             annotations = alert.get("annotations", {})
-            summary = annotations.get("summary", "No summary")
-            if summary is None:
-                logger.error(f"Missing summary annotations: {alert}")
-                raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Missing summary annotations")
+            summary = annotations.get("summary")
+            if not summary:
+                raise ValueError("Missing summary field")
 
             emoji = "🔴" if status == "firing" else "🟢"
             base_msg = f"{emoji} *{alert_name}* is *{status.upper()}*\n_{summary}_\n*{name}*"
@@ -78,6 +70,7 @@ async def receive_alert(request: Request):
                     if user_id.strip():
                         await send_telegram_message(user_id, base_msg)
         except Exception as e:
-            logger.error(f"Error processing alert: {e}")
+            logger.error(f"Skipping malformed alert: {alert} | Error: {e}")
+            continue
 
     return {"ok": True}
