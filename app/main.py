@@ -41,17 +41,18 @@ async def receive_alert(request: Request):
     for alert in alerts:
         try:
             status = alert.get("status").lower()
-            name = alert["labels"].get("alertname", "No name")
+            alert_name = alert["labels"].get("alertname", "No name")
+            name = alert["labels"].get("name", "No name")
             summary = alert["annotations"].get("summary", "No summary")
 
             emoji = "🔴" if status == "firing" else "🟢"
-            base_msg = f"{emoji} *{name}* is *{status.upper()}*\n_{summary}_"
+            base_msg = f"{emoji} *{alert_name}* is *{status.upper()}*\n_{summary}_\n*{name}*"
 
             # Send to group
             await send_telegram_message(TELEGRAM_GROUP_CHAT_ID, base_msg)
 
             # Send DM if it's "conteinerkilled"
-            if name.lower() == "conteinerkilled":
+            if alert_name.lower() == "conteinerkilled":
                 for user_id in DM_USERS:
                     if user_id.strip():
                         await send_telegram_message(user_id, base_msg)
